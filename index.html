@@ -3,58 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ARENA 1V1</title>
+    <title>FACE ARENA 1V1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --accent: #00d9ff; --bg: #050505; --card: #121214; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
         
-        .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; flex-direction: column; gap: 20px; }
+        .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; flex-direction: column; gap: 15px; }
         .active { display: flex; }
 
-        /* Стильный Профиль */
-        .card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-        h1 { font-size: 20px; letter-spacing: 2px; color: var(--accent); margin-bottom: 30px; }
+        /* LVL СЧЕТЧИК */
+        .lvl-container { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #222; margin-bottom: 10px; }
+        .lvl-bar { height: 8px; background: #222; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+        .lvl-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.5s; }
+
+        .card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; }
+        h1 { font-size: 18px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
         
-        input { background: #1a1a1c; border: 1px solid #333; color: white; padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; }
-        input:focus { border-color: var(--accent); }
-        
-        .btn { background: var(--accent); color: #000; border: none; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; width: 100%; text-transform: uppercase; }
+        input { background: #1a1a1c; border: 1px solid #333; color: white; padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; text-align: center; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; }
         .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
 
-        /* СЕТКА БАТТЛА (ДВА ОКНА В РЯД) */
-        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 20px; }
+        /* БАТТЛ */
+        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
         .video-box { position: relative; width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 18px; overflow: hidden; border: 1px solid #333; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); } /* Зеркалка пофикшена */
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         
-        .label { position: absolute; top: 10px; left: 10px; font-size: 10px; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px; color: var(--accent); font-weight: bold; }
-
-        #timer-display { font-size: 48px; font-weight: 900; text-align: center; color: var(--accent); text-shadow: 0 0 20px var(--accent); height: 60px; }
-        .result-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+        /* СЕТКА СКАНЕРА */
+        .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: 0.5s; }
+        .scanning .scanner-overlay { opacity: 1; }
+        .dot { position: absolute; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        
+        #timer-display { font-size: 40px; font-weight: 900; text-align: center; color: var(--accent); height: 50px; }
+        .result-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
 
     <div id="result-screen" class="result-overlay">
-        <h2 id="win-lose-text" style="font-size: 40px;"></h2>
-        <p id="score-details" style="font-size: 20px; color: var(--accent);"></p>
+        <h2 id="win-lose-text" style="font-size: 48px;"></h2>
+        <p id="score-details" style="font-size: 24px; color: var(--accent);"></p>
         <button class="btn" style="width: 200px;" onclick="location.reload()">В МЕНЮ</button>
     </div>
 
     <div id="menu" class="screen active">
-        <h1 id="user-display">ARENA MOD</h1>
+        <div class="lvl-container">
+            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                <span>УРОВЕНЬ: <span id="lvl-val">1</span></span>
+                <span id="xp-val">0/3 ПОБЕД</span>
+            </div>
+            <div class="lvl-bar"><div id="lvl-fill" class="lvl-fill"></div></div>
+        </div>
+        <h1 id="main-nick">ARENA CLAN</h1>
         <div class="card">
-            <button class="btn" onclick="showScreen('profile')">ИЗМЕНИТЬ ПРОФИЛЬ</button>
-            <div style="height: 15px;"></div>
+            <button class="btn" onclick="showScreen('profile')">ПРОФИЛЬ</button>
+            <div style="height: 10px;"></div>
             <button class="btn btn-outline" onclick="showScreen('lobby')">ДУЭЛЬ 1V1</button>
         </div>
     </div>
 
     <div id="profile" class="screen">
         <div class="card">
-            <h1>ПРОФИЛЬ</h1>
-            <input type="text" id="nick-input" placeholder="Введите ник">
-            <input type="color" id="color-input" style="height: 50px; cursor: pointer;">
+            <h1>НАСТРОЙКИ</h1>
+            <input type="text" id="nick-input" placeholder="Твой ник">
+            <input type="color" id="color-input">
             <button class="btn" onclick="saveProfile()">СОХРАНИТЬ</button>
         </div>
     </div>
@@ -62,37 +74,44 @@
     <div id="lobby" class="screen">
         <div class="card">
             <h1>ЛОББИ</h1>
-            <button class="btn" onclick="createRoom()">СОЗДАТЬ И ПОЛУЧИТЬ ID</button>
-            <p id="room-id-display" style="font-size: 11px; word-break: break-all; color: #666;"></p>
-            <hr style="border: 0.5px solid #222; margin: 20px 0;">
-            <input type="text" id="join-id-input" placeholder="Вставьте ID друга">
+            <button class="btn" onclick="createRoom()">СОЗДАТЬ И КОПИРОВАТЬ ID</button>
+            <input type="text" id="join-id-input" placeholder="ВСТАВЬ ID ДРУГА">
             <button class="btn btn-outline" onclick="joinRoom()">ПОДКЛЮЧИТЬСЯ</button>
         </div>
     </div>
 
     <div id="arena" class="screen">
-        <div id="timer-display">ГОТОВ?</div>
-        <div class="battle-grid">
+        <div id="timer-display">READY?</div>
+        <div class="battle-grid" id="battle-grid">
             <div class="video-box">
                 <video id="localVideo" autoplay muted playsinline></video>
-                <div class="label" id="my-name-label">ТЫ</div>
+                <div class="scanner-overlay" id="scan1"></div>
             </div>
             <div class="video-box">
                 <video id="remoteVideo" autoplay playsinline></video>
-                <div class="label" id="enemy-name-label">ПРОТИВНИК</div>
+                <div class="scanner-overlay" id="scan2"></div>
             </div>
         </div>
-        <button id="start-btn" class="btn" style="margin-top: 20px;" onclick="sendStartSignal()">НАЧАТЬ БАТТЛ</button>
+        <button id="start-btn" class="btn" style="margin-top: 15px;" onclick="sendStart()">START BATTLE</button>
     </div>
 
     <script>
         const peer = new Peer();
-        let conn, myStream, myScore = 0, enemyScore = 0;
-        let nick = localStorage.getItem('nick') || 'ИГРОК';
+        let conn, myStream, wins = parseInt(localStorage.getItem('wins') || '0');
+        let nick = localStorage.getItem('nick') || 'PLAYER';
         let color = localStorage.getItem('color') || '#00d9ff';
 
-        document.documentElement.style.setProperty('--accent', color);
-        document.getElementById('nick-input').value = nick;
+        // Инициализация LVL
+        function updateLvlUI() {
+            const lvl = Math.floor(wins / 3) + 1;
+            const xp = wins % 3;
+            document.getElementById('lvl-val').innerText = lvl;
+            document.getElementById('xp-val').innerText = `${xp}/3 ПОБЕД`;
+            document.getElementById('lvl-fill').style.width = (xp / 3 * 100) + '%';
+            document.getElementById('main-nick').innerText = nick;
+            document.documentElement.style.setProperty('--accent', color);
+        }
+        updateLvlUI();
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -100,10 +119,8 @@
         }
 
         function saveProfile() {
-            nick = document.getElementById('nick-input').value;
-            color = document.getElementById('color-input').value;
-            localStorage.setItem('nick', nick);
-            localStorage.setItem('color', color);
+            localStorage.setItem('nick', document.getElementById('nick-input').value);
+            localStorage.setItem('color', document.getElementById('color-input').value);
             location.reload();
         }
 
@@ -113,81 +130,79 @@
         });
 
         function createRoom() {
-            document.getElementById('room-id-display').innerText = "ID: " + peer.id;
-            navigator.clipboard.writeText(peer.id);
-            alert("ID скопирован. Отправь другу!");
+            navigator.clipboard.writeText(peer.id).then(() => alert("ID СКОПИРОВАН!\nПросто отправь его другу."));
         }
 
         function joinRoom() {
             const id = document.getElementById('join-id-input').value;
             conn = peer.connect(id);
-            setupConnection();
+            setupConn();
             peer.call(id, myStream);
         }
 
-        peer.on('connection', c => { conn = c; setupConnection(); });
+        peer.on('connection', c => { conn = c; setupConn(); });
         peer.on('call', call => {
             call.answer(myStream);
             call.on('stream', s => { 
-                document.getElementById('remoteVideo').srcObject = s; 
+                document.getElementById('remoteVideo').srcObject = s;
                 showScreen('arena');
             });
         });
 
-        function setupConnection() {
+        function setupConn() {
             showScreen('arena');
             conn.on('data', data => {
-                if (data === 'START_BATTLE') startCountdown();
-                if (data.type === 'FINAL_SCORE') {
-                    enemyScore = data.val;
-                    checkWinner();
-                }
+                if (data === 'START') startBattle();
+                if (data.type === 'END') finalize(data.score);
             });
         }
 
-        function sendStartSignal() {
-            conn.send('START_BATTLE');
-            startCountdown();
-        }
+        function sendStart() { conn.send('START'); startBattle(); }
 
-        function startCountdown() {
+        function startBattle() {
             document.getElementById('start-btn').style.display = 'none';
-            let timeLeft = 15;
-            const interval = setInterval(() => {
-                document.getElementById('timer-display').innerText = timeLeft;
-                timeLeft--;
-                if (timeLeft < 0) {
-                    clearInterval(interval);
-                    finishMatch();
+            document.getElementById('battle-grid').classList.add('scanning');
+            createDots('scan1'); createDots('scan2');
+            
+            let time = 15;
+            const timer = setInterval(() => {
+                document.getElementById('timer-display').innerText = time;
+                time--;
+                if (time < 0) {
+                    clearInterval(timer);
+                    const myScore = Math.floor(Math.random() * 40) + 60;
+                    conn.send({type: 'END', score: myScore});
+                    window.myCurrentScore = myScore;
                 }
             }, 1000);
         }
 
-        function finishMatch() {
-            myScore = Math.floor(Math.random() * 40) + 60; // Имитация анализа 60-100
-            conn.send({type: 'FINAL_SCORE', val: myScore});
-            document.getElementById('timer-display').innerText = "АНАЛИЗ...";
-            if (enemyScore > 0) checkWinner();
+        function createDots(id) {
+            const box = document.getElementById(id);
+            box.innerHTML = '';
+            for(let i=0; i<15; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.style.left = Math.random() * 90 + '%';
+                dot.style.top = Math.random() * 90 + '%';
+                box.appendChild(dot);
+            }
         }
 
-        function checkWinner() {
-            if (myScore === 0) return; // Ждем свой результат
+        function finalize(enemyScore) {
+            const myScore = window.myCurrentScore;
             const overlay = document.getElementById('result-screen');
-            const winText = document.getElementById('win-lose-text');
-            const details = document.getElementById('score-details');
-            
             overlay.style.display = 'flex';
-            details.innerText = `${myScore} XP vs ${enemyScore} XP`;
-
-            if (myScore > enemyScore) {
-                winText.innerText = "ПОБЕДА";
-                winText.style.color = "#00ff88";
-            } else if (myScore < enemyScore) {
-                winText.innerText = "ПОРАЖЕНИЕ";
-                winText.style.color = "#ff3366";
+            const win = myScore > enemyScore;
+            if(win) {
+                wins++; localStorage.setItem('wins', wins);
+                document.getElementById('win-lose-text').innerText = "ПОБЕДА";
+                document.getElementById('win-lose-text').style.color = "#00ff88";
             } else {
-                winText.innerText = "НИЧЬЯ";
+                document.getElementById('win-lose-text').innerText = "ПОРАЖЕНИЕ";
+                document.getElementById('win-lose-text').style.color = "#ff3366";
             }
+            document.getElementById('score-details').innerText = `${myScore} XP vs ${enemyScore} XP`;
         }
     </script>
 </body>
