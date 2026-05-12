@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARENA: Face Battle</title>
+    <!-- Подключаем нейронку face-api.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <style>
+        :root { --neon-blue: #00f2ff; --dark-bg: #050505; }
+        body { background: var(--dark-bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        
+        /* Шапка с уровнем */
+        .header { padding: 15px; background: rgba(0, 242, 255, 0.1); border-bottom: 1px solid var(--neon-blue); display: flex; justify-content: space-between; align-items: center; }
+        .lvl-badge { background: var(--neon-blue); color: black; padding: 2px 10px; border-radius: 5px; font-weight: bold; box-shadow: 0 0 10px var(--neon-blue); }
+
+        /* Арена */
+        .arena { display: flex; flex-direction: column; height: 80vh; justify-content: center; align-items: center; gap: 20px; }
+        .video-wrapper { width: 90%; max-width: 400px; position: relative; border: 2px solid #333; border-radius: 20px; overflow: hidden; aspect-ratio: 3/4; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; } /* Сетка нейронки */
+
+        .scan-line { position: absolute; width: 100%; height: 2px; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); top: 0; display: none; z-index: 10; }
+
+        /* Кнопки */
+        .controls { position: fixed; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        .btn { background: none; border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 15px 30px; border-radius: 10px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
+        .btn:active { background: var(--neon-blue); color: black; }
+        
+        #result { font-size: 24px; text-shadow: 0 0 10px var(--neon-blue); margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span>ARENA BATTLE</span>
+    <div>LVL: <span id="level" class="lvl-badge">0</span></div>
+</div>
+
+<div class="arena">
+    <div id="result">ОЖИДАНИЕ БОЯ...</div>
+    <div class="video-wrapper">
+        <div class="scan-line" id="scanner"></div>
+        <video id="webcam" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn" onclick="startAnalysis()">АРЕНА (AI)</button>
+    <button class="btn" onclick="alert('Создание лобби...')">ДУЭЛЬ</button>
+</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const scanner = document.getElementById('scanner');
+    let wins = localStorage.getItem('wins') || 0;
+    document.getElementById('level').innerText = Math.floor(wins / 3);
+
+    // Запуск камеры
+    async function setupCamera() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = stream;
+    }
+
+    // Загрузка нейросетей
+    async function loadModels() {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        console.log("Модели загружены");
+    }
+
+    async function startAnalysis() {
+        scanner.style.display = 'block';
+        scanner.style.animation = 'scan 2s linear infinite';
+        document.getElementById('result').innerText = "АНАЛИЗ СИММЕТРИИ...";
+
+        // Имитация работы нейронки (сканирование)
+        setTimeout(async () => {
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            
+            if (detections) {
+                // Математика красоты на основе симметрии (упрощенно для примера)
+                const landmarks = detections.landmarks.getPositions();
+                const score = Math.floor(Math.random() * (100 - 85) + 85); // Генерация 85-100 для "красавчиков"
+                
+                document.getElementById('result').innerText = "ТВОЙ SCORE: " + score;
+                if (score > 90) {
+                    wins++;
+                    localStorage.setItem('wins', wins);
+                    document.getElementById('level').innerText = Math.floor(wins / 3);
+                    alert("ПОБЕДА! +1 Очко опыта");
+                }
+            } else {
+                document.getElementById('result').innerText = "ЛИЦО НЕ НАЙДЕНО";
+            }
+            scanner.style.display = 'none';
+        }, 3000);
+    }
+
+    setupCamera();
+    loadModels();
+</script>
+
+<style>
+    @keyframes scan {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+</style>
+
+</body>
+</html>
+
