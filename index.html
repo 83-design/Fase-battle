@@ -7,33 +7,34 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --accent: #00d9ff; --bg: #050505; --card: #121214; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
         
         .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; flex-direction: column; gap: 15px; }
         .active { display: flex; }
 
-        /* LVL СЧЕТЧИК */
-        .lvl-container { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #222; margin-bottom: 10px; }
+        .lvl-container { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #222; }
         .lvl-bar { height: 8px; background: #222; border-radius: 4px; margin-top: 8px; overflow: hidden; }
         .lvl-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.5s; }
 
         .card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; }
-        h1 { font-size: 18px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
-        
         input { background: #1a1a1c; border: 1px solid #333; color: white; padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; text-align: center; }
         .btn { background: var(--accent); color: #000; border: none; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; }
         .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
 
-        /* БАТТЛ */
         .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
         .video-box { position: relative; width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 18px; overflow: hidden; border: 1px solid #333; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         
-        /* СЕТКА СКАНЕРА */
-        .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: 0.5s; }
+        /* АНИМИРОВАННЫЕ ТОЧКИ */
+        .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
         .scanning .scanner-overlay { opacity: 1; }
-        .dot { position: absolute; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        .dot { position: absolute; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse 1.5s infinite alternate; }
         
+        @keyframes pulse { 
+            from { opacity: 0.3; transform: scale(0.8); } 
+            to { opacity: 1; transform: scale(1.2); } 
+        }
+
         #timer-display { font-size: 40px; font-weight: 900; text-align: center; color: var(--accent); height: 50px; }
         .result-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
     </style>
@@ -54,7 +55,7 @@
             </div>
             <div class="lvl-bar"><div id="lvl-fill" class="lvl-fill"></div></div>
         </div>
-        <h1 id="main-nick">ARENA CLAN</h1>
+        <h1 id="main-nick" style="text-align:center; color:var(--accent)">ARENA MOD</h1>
         <div class="card">
             <button class="btn" onclick="showScreen('profile')">ПРОФИЛЬ</button>
             <div style="height: 10px;"></div>
@@ -74,8 +75,9 @@
     <div id="lobby" class="screen">
         <div class="card">
             <h1>ЛОББИ</h1>
-            <button class="btn" onclick="createRoom()">СОЗДАТЬ И КОПИРОВАТЬ ID</button>
-            <input type="text" id="join-id-input" placeholder="ВСТАВЬ ID ДРУГА">
+            <button class="btn" onclick="createRoom()">СОЗДАТЬ ID</button>
+            <p id="my-id-text" style="font-size:10px; color:#555; margin-top:5px;"></p>
+            <input type="text" id="join-id-input" placeholder="ID ДРУГА">
             <button class="btn btn-outline" onclick="joinRoom()">ПОДКЛЮЧИТЬСЯ</button>
         </div>
     </div>
@@ -92,26 +94,24 @@
                 <div class="scanner-overlay" id="scan2"></div>
             </div>
         </div>
-        <button id="start-btn" class="btn" style="margin-top: 15px;" onclick="sendStart()">START BATTLE</button>
+        <button id="start-btn" class="btn" style="margin-top: 15px; display:none;" onclick="sendStart()">START BATTLE</button>
     </div>
 
     <script>
         const peer = new Peer();
-        let conn, myStream, wins = parseInt(localStorage.getItem('wins') || '0');
+        let conn, myStream, remoteScore = null, myFinalScore = null;
+        let wins = parseInt(localStorage.getItem('wins') || '0');
         let nick = localStorage.getItem('nick') || 'PLAYER';
         let color = localStorage.getItem('color') || '#00d9ff';
 
-        // Инициализация LVL
-        function updateLvlUI() {
-            const lvl = Math.floor(wins / 3) + 1;
-            const xp = wins % 3;
-            document.getElementById('lvl-val').innerText = lvl;
-            document.getElementById('xp-val').innerText = `${xp}/3 ПОБЕД`;
-            document.getElementById('lvl-fill').style.width = (xp / 3 * 100) + '%';
-            document.getElementById('main-nick').innerText = nick;
+        function updateUI() {
+            document.getElementById('lvl-val').innerText = Math.floor(wins/3) + 1;
+            document.getElementById('xp-val').innerText = (wins%3) + "/3 ПОБЕД";
+            document.getElementById('lvl-fill').style.width = ((wins%3)/3*100) + "%";
             document.documentElement.style.setProperty('--accent', color);
+            document.getElementById('main-nick').innerText = nick;
         }
-        updateLvlUI();
+        updateUI();
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -124,86 +124,99 @@
             location.reload();
         }
 
-        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(s => {
-            myStream = s;
-            document.getElementById('localVideo').srcObject = s;
-        });
+        // ЖЕСТКИЙ ЗАХВАТ КАМЕРЫ
+        async function initCamera() {
+            myStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+            document.getElementById('localVideo').srcObject = myStream;
+        }
+        initCamera();
+
+        peer.on('open', id => document.getElementById('my-id-text').innerText = "ID: " + id);
 
         function createRoom() {
-            navigator.clipboard.writeText(peer.id).then(() => alert("ID СКОПИРОВАН!\nПросто отправь его другу."));
+            navigator.clipboard.writeText(peer.id);
+            alert("ID скопирован! Скинь другу.");
         }
 
-        function joinRoom() {
+        async function joinRoom() {
             const id = document.getElementById('join-id-input').value;
             conn = peer.connect(id);
-            setupConn();
-            peer.call(id, myStream);
-        }
-
-        peer.on('connection', c => { conn = c; setupConn(); });
-        peer.on('call', call => {
-            call.answer(myStream);
-            call.on('stream', s => { 
+            handleConn(conn);
+            peer.call(id, myStream).on('stream', s => {
                 document.getElementById('remoteVideo').srcObject = s;
                 showScreen('arena');
+                document.getElementById('start-btn').style.display = 'block';
+            });
+        }
+
+        peer.on('connection', c => handleConn(c));
+        peer.on('call', call => {
+            call.answer(myStream);
+            call.on('stream', s => {
+                document.getElementById('remoteVideo').srcObject = s;
+                showScreen('arena');
+                document.getElementById('start-btn').style.display = 'block';
             });
         });
 
-        function setupConn() {
-            showScreen('arena');
+        function handleConn(c) {
+            conn = c;
             conn.on('data', data => {
-                if (data === 'START') startBattle();
-                if (data.type === 'END') finalize(data.score);
+                if(data === 'START') runBattle();
+                if(data.type === 'RESULT') {
+                    remoteScore = data.val;
+                    tryFinalize();
+                }
             });
         }
 
-        function sendStart() { conn.send('START'); startBattle(); }
+        function sendStart() { conn.send('START'); runBattle(); }
 
-        function startBattle() {
+        function runBattle() {
             document.getElementById('start-btn').style.display = 'none';
             document.getElementById('battle-grid').classList.add('scanning');
-            createDots('scan1'); createDots('scan2');
-            
-            let time = 15;
-            const timer = setInterval(() => {
-                document.getElementById('timer-display').innerText = time;
-                time--;
-                if (time < 0) {
-                    clearInterval(timer);
-                    const myScore = Math.floor(Math.random() * 40) + 60;
-                    conn.send({type: 'END', score: myScore});
-                    window.myCurrentScore = myScore;
+            genDots('scan1'); genDots('scan2');
+            let t = 15;
+            const iv = setInterval(() => {
+                document.getElementById('timer-display').innerText = t;
+                t--;
+                if(t < 0) {
+                    clearInterval(iv);
+                    myFinalScore = Math.floor(Math.random() * 41) + 60;
+                    conn.send({type: 'RESULT', val: myFinalScore});
+                    tryFinalize();
                 }
             }, 1000);
         }
 
-        function createDots(id) {
-            const box = document.getElementById(id);
-            box.innerHTML = '';
-            for(let i=0; i<15; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'dot';
-                dot.style.left = Math.random() * 90 + '%';
-                dot.style.top = Math.random() * 90 + '%';
-                box.appendChild(dot);
+        function genDots(id) {
+            const b = document.getElementById(id);
+            b.innerHTML = '';
+            for(let i=0; i<20; i++) {
+                const d = document.createElement('div');
+                d.className = 'dot';
+                d.style.left = Math.random()*90+'%';
+                d.style.top = Math.random()*90+'%';
+                d.style.animationDelay = Math.random()+'s';
+                b.appendChild(d);
             }
         }
 
-        function finalize(enemyScore) {
-            const myScore = window.myCurrentScore;
-            const overlay = document.getElementById('result-screen');
-            overlay.style.display = 'flex';
-            const win = myScore > enemyScore;
-            if(win) {
-                wins++; localStorage.setItem('wins', wins);
-                document.getElementById('win-lose-text').innerText = "ПОБЕДА";
-                document.getElementById('win-lose-text').style.color = "#00ff88";
-            } else {
-                document.getElementById('win-lose-text').innerText = "ПОРАЖЕНИЕ";
-                document.getElementById('win-lose-text').style.color = "#ff3366";
+        function tryFinalize() {
+            if(remoteScore !== null && myFinalScore !== null) {
+                const res = document.getElementById('result-screen');
+                const txt = document.getElementById('win-lose-text');
+                res.style.display = 'flex';
+                if(myFinalScore > remoteScore) {
+                    wins++; localStorage.setItem('wins', wins);
+                    txt.innerText = "ПОБЕДА"; txt.style.color = "#00ff88";
+                } else {
+                    txt.innerText = "ПОРАЖЕНИЕ"; txt.style.color = "#ff3366";
+                }
+                document.getElementById('score-details').innerText = `${myFinalScore} XP vs ${remoteScore} XP`;
             }
-            document.getElementById('score-details').innerText = `${myScore} XP vs ${enemyScore} XP`;
         }
     </script>
 </body>
 </html>
+    
