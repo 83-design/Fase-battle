@@ -3,70 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ARENA 1V1 PRO</title>
+    <title>IRON ARENA AI</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --accent: #00d9ff; --bg: #050505; --card: #121214; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
         
-        /* ФОН С БОДИБИЛДЕРАМИ */
         .arena-bg { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
+            background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), 
                         url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop'); 
-            background-size: cover; background-position: center; z-index: -1; display: none;
+            background-size: cover; background-position: center; z-index: -1; 
         }
-        .scanning .arena-bg { display: block; }
 
         .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; flex-direction: column; gap: 15px; z-index: 10; }
         .active { display: flex; }
         
         .lvl-container { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #222; }
         .lvl-bar { height: 8px; background: #222; border-radius: 4px; margin-top: 8px; overflow: hidden; }
-        .lvl-fill { height: 100%; background: var(--accent); width: 0%; transition: 1s ease-in-out; }
+        .lvl-fill { height: 100%; background: var(--accent); width: 0%; transition: 1s ease; }
 
-        .card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .btn { background: var(--accent); color: #000; border: none; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; transition: 0.2s; }
-        .btn:active { transform: scale(0.95); }
+        .card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; }
         .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
-        .btn-rematch { background: #ffaa00; margin-bottom: 10px; }
 
-        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
         .video-box { position: relative; width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 18px; overflow: hidden; border: 2px solid #333; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
         
-        .score-card { background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; text-align: center; border: 1px solid var(--accent); backdrop-filter: blur(5px); }
         .score-val { font-size: 24px; font-weight: 900; color: var(--accent); font-family: monospace; }
-
-        .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
-        .scanning .scanner-overlay { opacity: 1; }
-        .dot { position: absolute; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 15px var(--accent); animation: pulse 1s infinite alternate; }
-        @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
-
-        #timer-display { font-size: 50px; font-weight: 900; text-align: center; color: var(--accent); text-shadow: 0 0 20px var(--accent); }
+        #timer-display { font-size: 50px; font-weight: 900; text-align: center; color: var(--accent); }
         .result-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        #loader { position: fixed; top: 10px; font-size: 10px; color: var(--accent); }
     </style>
 </head>
 <body>
 
     <div class="arena-bg"></div>
+    <div id="loader">ИНИЦИАЛИЗАЦИЯ ИИ...</div>
 
     <div id="result-screen" class="result-overlay">
-        <h2 id="win-lose-text" style="font-size: 48px; margin-bottom: 10px;"></h2>
-        <p id="score-details" style="font-size: 24px; color: var(--accent); margin-bottom: 30px;"></p>
-        <button id="rematch-btn" class="btn btn-rematch" style="width: 250px;" onclick="requestRematch()">РЕВАНШ (0/2)</button>
-        <button class="btn btn-outline" style="width: 250px;" onclick="location.reload()">В МЕНЮ</button>
+        <h2 id="win-lose-text" style="font-size: 48px;"></h2>
+        <p id="score-details" style="font-size: 24px; color: var(--accent);"></p>
+        <button id="rematch-btn" class="btn" style="width: 250px; background: #ffaa00; margin-bottom: 10px;" onclick="requestRematch()">РЕВАНШ (0/2)</button>
+        <button class="btn btn-outline" style="width: 250px;" onclick="location.reload()">МЕНЮ</button>
     </div>
 
     <div id="menu" class="screen active">
         <div class="lvl-container">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px;">
                 <span>LVL: <span id="lvl-val">1</span></span>
                 <span id="xp-val">0/3</span>
             </div>
             <div class="lvl-bar"><div id="lvl-fill" class="lvl-fill"></div></div>
         </div>
-        <h1 id="main-nick" style="text-align:center; color:var(--accent); font-style: italic;">IRON ARENA</h1>
+        <h1 id="main-nick" style="text-align:center; color:var(--accent);">IRON ARENA AI</h1>
         <div class="card">
             <button class="btn" onclick="showScreen('profile')">ПРОФИЛЬ</button>
             <div style="height: 10px;"></div>
@@ -74,71 +66,58 @@
         </div>
     </div>
 
-    <div id="profile" class="screen">
-        <div class="card">
-            <h1>ПРОФИЛЬ</h1>
-            <input type="text" id="nick-input" placeholder="Твой Ник">
-            <input type="color" id="color-input" style="height:50px; width:100%">
-            <button class="btn" onclick="saveProfile()" style="margin-top:15px">СОХРАНИТЬ</button>
-        </div>
-    </div>
-
     <div id="lobby" class="screen">
         <div class="card">
             <h1>ЛОББИ</h1>
-            <button class="btn" onclick="createRoom()">СКОПИРОВАТЬ МОЙ ID</button>
-            <p id="my-id-text" style="font-size:10px; color:#666; margin: 10px 0;"></p>
+            <button class="btn" onclick="createRoom()">COPY ID</button>
+            <p id="my-id-text" style="font-size:10px; color:#555; margin:5px 0"></p>
             <input type="text" id="join-id-input" placeholder="ID ДРУГА">
-            <button class="btn btn-outline" onclick="joinRoom()">В БОЙ!</button>
+            <button class="btn btn-outline" onclick="joinRoom()">В БОЙ</button>
         </div>
     </div>
 
     <div id="arena" class="screen">
         <div id="timer-display">READY?</div>
-        <div class="battle-grid" id="battle-grid">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="video-box">
                 <video id="localVideo" autoplay muted playsinline></video>
-                <div class="scanner-overlay" id="scan1"></div>
+                <canvas id="localCanvas"></canvas>
             </div>
             <div class="video-box">
                 <video id="remoteVideo" autoplay playsinline></video>
-                <div class="scanner-overlay" id="scan2"></div>
             </div>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-            <div class="score-card"><div style="font-size:10px">YOU</div><div id="my-live-score" class="score-val">0.00</div></div>
-            <div class="score-card"><div style="font-size:10px">ENEMY</div><div id="enemy-live-score" class="score-val">0.00</div></div>
+            <div style="text-align:center">YOU: <span id="my-live-score" class="score-val">0</span></div>
+            <div style="text-align:center">ENEMY: <span id="enemy-live-score" class="score-val">0</span></div>
         </div>
 
-        <button id="start-btn" class="btn" style="margin-top:20px; display:none;" onclick="sendStart()">НАЧАТЬ МАТЧ</button>
+        <button id="start-btn" class="btn" style="margin-top:15px; display:none;" onclick="sendStart()">START AI BATTLE</button>
     </div>
 
     <script>
         const peer = new Peer();
-        let conn, myStream, myFinalScore = 0, enemyFinalScore = 0, isBattle = false, rematchVotes = 0;
+        let conn, myStream, isBattle = false, rematchVotes = 0;
+        let myFinalScore = 0, enemyFinalScore = 0;
+
+        // ЗАГРУЗКА ИИ
+        async function loadAI() {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            document.getElementById('loader').innerText = "ИИ ГОТОВ ✅";
+        }
+        loadAI();
 
         function updateUI() {
             const wins = parseInt(localStorage.getItem('wins') || '0');
             document.getElementById('lvl-val').innerText = Math.floor(wins/3) + 1;
-            document.getElementById('xp-val').innerText = (wins%3) + "/3 ПОБЕД";
+            document.getElementById('xp-val').innerText = (wins%3) + "/3";
             document.getElementById('lvl-fill').style.width = ((wins%3)/3*100) + "%";
-            const c = localStorage.getItem('color') || '#00d9ff';
-            document.documentElement.style.setProperty('--accent', c);
             document.getElementById('main-nick').innerText = localStorage.getItem('nick') || 'CHAMPION';
         }
         updateUI();
-
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        function saveProfile() {
-            localStorage.setItem('nick', document.getElementById('nick-input').value);
-            localStorage.setItem('color', document.getElementById('color-input').value);
-            updateUI(); showScreen('menu');
-        }
 
         async function initCamera() {
             myStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
@@ -146,17 +125,14 @@
         }
         initCamera();
 
-        peer.on('open', id => document.getElementById('my-id-text').innerText = "ТВОЙ ID: " + id);
-
+        // PEER LOGIC
+        peer.on('open', id => document.getElementById('my-id-text').innerText = "ID: " + id);
         function createRoom() { navigator.clipboard.writeText(peer.id); alert("ID Скопирован!"); }
-
         function joinRoom() {
             const id = document.getElementById('join-id-input').value;
-            conn = peer.connect(id);
-            setupConn(conn);
+            conn = peer.connect(id); setupConn(conn);
             peer.call(id, myStream).on('stream', s => displayRemote(s));
         }
-
         peer.on('connection', c => setupConn(c));
         peer.on('call', call => {
             call.answer(myStream);
@@ -165,7 +141,9 @@
 
         function displayRemote(s) {
             document.getElementById('remoteVideo').srcObject = s;
-            showScreen('arena');
+            document.getElementById('arena').classList.add('active');
+            document.getElementById('menu').classList.remove('active');
+            document.getElementById('lobby').classList.remove('active');
             document.getElementById('start-btn').style.display = 'block';
         }
 
@@ -175,32 +153,42 @@
                 if(data === 'START') runBattle();
                 if(data.type === 'LIVE') document.getElementById('enemy-live-score').innerText = data.val;
                 if(data.type === 'FINAL') { enemyFinalScore = data.val; checkEnd(); }
-                if(data === 'REMATCH_REQ') { rematchVotes++; updateRematchUI(); }
+                if(data === 'REMATCH') { rematchVotes++; updateRematchUI(); }
             });
         }
 
         function sendStart() { conn.send('START'); runBattle(); }
 
-        function runBattle() {
+        async function runBattle() {
             isBattle = true; rematchVotes = 0;
             document.getElementById('result-screen').style.display = 'none';
             document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('battle-grid').classList.add('scanning');
-            genDots('scan1'); genDots('scan2');
             
-            let t = 15;
-            const liveLoop = setInterval(() => {
-                if(!isBattle) { clearInterval(liveLoop); return; }
-                const current = (Math.random() * 30 + 60).toFixed(2);
-                document.getElementById('my-live-score').innerText = current;
-                if(conn) conn.send({type: 'LIVE', val: current});
-            }, 200);
+            const video = document.getElementById('localVideo');
+            const canvas = document.getElementById('localCanvas');
+            const displaySize = { width: video.offsetWidth, height: video.offsetHeight };
+            faceapi.matchDimensions(canvas, displaySize);
 
-            const mainTimer = setInterval(() => {
+            let t = 15;
+            const timer = setInterval(async () => {
                 document.getElementById('timer-display').innerText = t;
+                
+                // РАБОТА ИИ
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+                if (detections.length > 0) {
+                    // Формула "красоты" = уверенность детекции + стабильность точек
+                    let score = (detections[0].detection.score * 100).toFixed(2);
+                    document.getElementById('my-live-score').innerText = score;
+                    if(conn) conn.send({type: 'LIVE', val: score});
+                }
+
                 t--;
                 if(t < 0) {
-                    clearInterval(mainTimer);
+                    clearInterval(timer);
                     isBattle = false;
                     myFinalScore = parseFloat(document.getElementById('my-live-score').innerText);
                     if(conn) conn.send({type: 'FINAL', val: myFinalScore});
@@ -209,10 +197,23 @@
             }, 1000);
         }
 
+        function checkEnd() {
+            if(!isBattle && myFinalScore > 0 && enemyFinalScore > 0) {
+                const win = myFinalScore > enemyFinalScore;
+                if(win) {
+                    localStorage.setItem('wins', parseInt(localStorage.getItem('wins') || '0') + 1);
+                    updateUI();
+                }
+                document.getElementById('win-lose-text').innerText = win ? "ПОБЕДА" : "ПРОИГРЫШ";
+                document.getElementById('win-lose-text').style.color = win ? "#00ff88" : "#ff3366";
+                document.getElementById('score-details').innerText = `${myFinalScore} XP vs ${enemyFinalScore} XP`;
+                document.getElementById('result-screen').style.display = 'flex';
+                document.getElementById('rematch-btn').innerText = "РЕВАНШ (0/2)";
+            }
+        }
+
         function requestRematch() {
-            rematchVotes++;
-            conn.send('REMATCH_REQ');
-            updateRematchUI();
+            rematchVotes++; conn.send('REMATCH'); updateRematchUI();
         }
 
         function updateRematchUI() {
@@ -220,30 +221,11 @@
             if(rematchVotes >= 2) runBattle();
         }
 
-        function genDots(id) {
-            const b = document.getElementById(id); b.innerHTML = '';
-            for(let i=0; i<30; i++) {
-                const d = document.createElement('div'); d.className = 'dot';
-                d.style.left = Math.random()*95+'%'; d.style.top = Math.random()*95+'%';
-                d.style.animationDelay = Math.random()+'s'; b.appendChild(d);
-            }
-        }
-
-        function checkEnd() {
-            if(!isBattle && myFinalScore > 0 && enemyFinalScore > 0) {
-                const win = myFinalScore > enemyFinalScore;
-                if(win) {
-                    let w = parseInt(localStorage.getItem('wins') || '0');
-                    localStorage.setItem('wins', w + 1);
-                    updateUI(); // Сразу обновляем полоску уровня под капотом
-                }
-                document.getElementById('win-lose-text').innerText = win ? "WIN" : "LOSE";
-                document.getElementById('win-lose-text').style.color = win ? "#00ff88" : "#ff3366";
-                document.getElementById('score-details').innerText = `${myFinalScore} vs ${enemyFinalScore}`;
-                document.getElementById('result-screen').style.display = 'flex';
-                document.getElementById('rematch-btn').innerText = `РЕВАНШ (0/2)`;
-            }
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
     </script>
 </body>
 </html>
+
