@@ -2,114 +2,200 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARENA: Face Battle</title>
-    <!-- Подключаем нейронку face-api.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Omoggle Clone</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --neon-blue: #00f2ff; --dark-bg: #050505; }
-        body { background: var(--dark-bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
-        
-        /* Шапка с уровнем */
-        .header { padding: 15px; background: rgba(0, 242, 255, 0.1); border-bottom: 1px solid var(--neon-blue); display: flex; justify-content: space-between; align-items: center; }
-        .lvl-badge { background: var(--neon-blue); color: black; padding: 2px 10px; border-radius: 5px; font-weight: bold; box-shadow: 0 0 10px var(--neon-blue); }
+        :root {
+            --bg-color: #0b0b0d;
+            --card-bg: #161618;
+            --accent-blue: #40e0d0;
+            --text-gray: #8e8e93;
+        }
 
-        /* Арена */
-        .arena { display: flex; flex-direction: column; height: 80vh; justify-content: center; align-items: center; gap: 20px; }
-        .video-wrapper { width: 90%; max-width: 400px; position: relative; border: 2px solid #333; border-radius: 20px; overflow: hidden; aspect-ratio: 3/4; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        canvas { position: absolute; top: 0; left: 0; } /* Сетка нейронки */
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-        .scan-line { position: absolute; width: 100%; height: 2px; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); top: 0; display: none; z-index: 10; }
+        /* Карточка профиля / Арены */
+        .card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border: 1px solid #2c2c2e;
+            margin-bottom: 15px;
+            position: relative;
+        }
 
-        /* Кнопки */
-        .controls { position: fixed; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; }
-        .btn { background: none; border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 15px 30px; border-radius: 10px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
-        .btn:active { background: var(--neon-blue); color: black; }
-        
-        #result { font-size: 24px; text-shadow: 0 0 10px var(--neon-blue); margin-top: 10px; }
+        .online-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #34c759;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .title {
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        /* Стили камер */
+        .video-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 16px;
+            background: #000;
+            /* Убираем зеркальность */
+            transform: scaleX(-1); 
+            border: 1px solid #40e0d033;
+        }
+
+        /* Прогресс бар как на скрине */
+        .progress-container {
+            margin-top: 15px;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #2c2c2e;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #40e0d0, #007aff);
+            width: 77%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: var(--text-gray);
+        }
+
+        .btn-main {
+            width: 100%;
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #status-msg {
+            font-size: 14px;
+            color: var(--accent-blue);
+            text-align: center;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <span>ARENA BATTLE</span>
-    <div>LVL: <span id="level" class="lvl-badge">0</span></div>
-</div>
+    <div id="status-msg">ИНИЦИАЛИЗАЦИЯ...</div>
 
-<div class="arena">
-    <div id="result">ОЖИДАНИЕ БОЯ...</div>
-    <div class="video-wrapper">
-        <div class="scan-line" id="scanner"></div>
-        <video id="webcam" autoplay muted playsinline></video>
-        <canvas id="overlay"></canvas>
+    <!-- Блок 1V1 ARENA (Твой профиль) -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-gray);">
+            <span><span class="online-dot"></span> 4.6K ONLINE</span>
+            <span style="color: var(--accent-blue)">387 ELO</span>
+        </div>
+        <div class="title">1V1 ARENA</div>
+        
+        <div class="video-container">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="remoteVideo" autoplay playsinline style="display:none; border-color: #ff3b30;"></video>
+        </div>
+
+        <div class="progress-container">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;">
+                <span>77%</span>
+                <span>114 ELO NEEDED</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+
+        <button class="btn-main" onclick="startDuel()">СОЗДАТЬ ДУЭЛЬ</button>
     </div>
-</div>
 
-<div class="controls">
-    <button class="btn" onclick="startAnalysis()">АРЕНА (AI)</button>
-    <button class="btn" onclick="alert('Создание лобби...')">ДУЭЛЬ</button>
-</div>
+    <script>
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const statusMsg = document.getElementById('status-msg');
+        
+        const peer = new Peer();
 
-<script>
-    const video = document.getElementById('webcam');
-    const scanner = document.getElementById('scanner');
-    let wins = localStorage.getItem('wins') || 0;
-    document.getElementById('level').innerText = Math.floor(wins / 3);
+        // Включаем камеру сразу
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                localVideo.srcObject = stream;
+                statusMsg.innerText = "КАМЕРА ГОТОВА";
+            })
+            .catch(err => statusMsg.innerText = "ОШИБКА КАМЕРЫ");
 
-    // Запуск камеры
-    async function setupCamera() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = stream;
-    }
-
-    // Загрузка нейросетей
-    async function loadModels() {
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        console.log("Модели загружены");
-    }
-
-    async function startAnalysis() {
-        scanner.style.display = 'block';
-        scanner.style.animation = 'scan 2s linear infinite';
-        document.getElementById('result').innerText = "АНАЛИЗ СИММЕТРИИ...";
-
-        // Имитация работы нейронки (сканирование)
-        setTimeout(async () => {
-            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-            
-            if (detections) {
-                // Математика красоты на основе симметрии (упрощенно для примера)
-                const landmarks = detections.landmarks.getPositions();
-                const score = Math.floor(Math.random() * (100 - 85) + 85); // Генерация 85-100 для "красавчиков"
-                
-                document.getElementById('result').innerText = "ТВОЙ SCORE: " + score;
-                if (score > 90) {
-                    wins++;
-                    localStorage.setItem('wins', wins);
-                    document.getElementById('level').innerText = Math.floor(wins / 3);
-                    alert("ПОБЕДА! +1 Очко опыта");
-                }
-            } else {
-                document.getElementById('result').innerText = "ЛИЦО НЕ НАЙДЕНО";
+        peer.on('open', (id) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinId = urlParams.get('join');
+            if (joinId) {
+                statusMsg.innerText = "ПОДКЛЮЧЕНИЕ К ДРУГУ...";
+                connectToFriend(joinId);
             }
-            scanner.style.display = 'none';
-        }, 3000);
-    }
+        });
 
-    setupCamera();
-    loadModels();
-</script>
+        function startDuel() {
+            const duelUrl = window.location.origin + window.location.pathname + "?join=" + peer.id;
+            navigator.clipboard.writeText(duelUrl);
+            alert("Ссылка для друга скопирована!");
+            statusMsg.innerText = "ОЖИДАНИЕ ПРОТИВНИКА...";
+        }
 
-<style>
-    @keyframes scan {
-        0% { top: 0; }
-        100% { top: 100%; }
-    }
-</style>
+        peer.on('call', (call) => {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                call.answer(stream);
+                call.on('stream', remoteStream => {
+                    remoteVideo.srcObject = remoteStream;
+                    remoteVideo.style.display = 'block';
+                    statusMsg.innerText = "ДУЭЛЬ НАЧАТА!";
+                });
+            });
+        });
 
+        function connectToFriend(id) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                const call = peer.call(id, stream);
+                call.on('stream', remoteStream => {
+                    remoteVideo.srcObject = remoteStream;
+                    remoteVideo.style.display = 'block';
+                    statusMsg.innerText = "ДУЭЛЬ НАЧАТА!";
+                });
+            });
+        }
+    </script>
 </body>
 </html>
-
